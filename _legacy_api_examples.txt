@@ -1,0 +1,60 @@
+// Legacy API route example (for reference, not active in app.js)
+
+// Optimized API to get latest user list data (last message, time, unread count)
+/*
+app.get('/api/userlist', async (req, res) => {
+    const me = req.query.me;
+    if (!me) return res.status(400).json([]);
+    try {
+        // Get all users except 'me'
+        const users = await User.find({ username: { $ne: me } }, 'username email');
+        const usernames = users.map(u => u.username);
+        // Aggregate last message and unread count for all users in one go
+        const lastMsgs = await Chat.aggregate([
+            { $match: { $or: [
+                { from: me, to: { $in: usernames } },
+                { from: { $in: usernames }, to: me }
+            ] } },
+            { $sort: { timestamp: -1 } },
+            { $group: {
+                _id: {
+                    user: {
+                        $cond: [ { $eq: [ "$from", me ] }, "$to", "$from" ]
+                    }
+                },
+                lastMessage: { $first: "$message" },
+                lastTime: { $first: "$timestamp" }
+            } }
+        ]);
+        const lastMsgMap = {};
+        lastMsgs.forEach(lm => {
+            lastMsgMap[lm._id.user] = { lastMessage: lm.lastMessage, lastTime: lm.lastTime };
+        });
+        // Aggregate unread counts
+        const unreadCounts = await Chat.aggregate([
+            { $match: { from: { $in: usernames }, to: me, seen: false } },
+            { $group: { _id: "$from", count: { $sum: 1 } } }
+        ]);
+        const unreadMap = {};
+        unreadCounts.forEach(u => { unreadMap[u._id] = u.count; });
+        // Build user list
+        const usersWithLastMsg = users.map(user => ({
+            username: user.username,
+            email: user.email,
+            lastMessage: lastMsgMap[user.username]?.lastMessage || '',
+            lastTime: lastMsgMap[user.username]?.lastTime || null,
+            unreadCount: unreadMap[user.username] || 0
+        }));
+        // Sort users by lastTime (descending, newest first)
+        usersWithLastMsg.sort((a, b) => {
+            if (!a.lastTime && !b.lastTime) return 0;
+            if (!a.lastTime) return 1;
+            if (!b.lastTime) return -1;
+            return new Date(b.lastTime) - new Date(a.lastTime);
+        });
+        res.json(usersWithLastMsg);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to load user list', error: err.message });
+    }
+});
+*/
