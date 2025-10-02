@@ -345,13 +345,14 @@ li:last-child {
         left: 0;
         width: 100vw;
         height: calc(100vh - 104px);
-        max-height: calc(100vh - 104px);
+        max-height: none;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         background: #fff;
-        padding-bottom: 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 16px) !important;
         margin-bottom: 0 !important;
         border-bottom: none;
+        box-sizing: border-box;
     }
     .user-row {
         padding: 14px 8px;
