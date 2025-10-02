@@ -480,22 +480,70 @@ body.dark-mode .container {
     position: relative;
 }
 @media (max-width: 600px) {
+    body {
+        padding: 0;
+    }
     .container {
         max-width: 100vw;
+        width: 100vw;
         height: 100vh;
         max-height: 100vh;
         border-radius: 0;
+        box-shadow: none;
     }
-    .header, .input-container {
-        padding-left: 10px;
-        padding-right: 10px;
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        z-index: 10;
+        padding: 14px 8px;
+    }
+    .input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        padding: 10px 8px;
+        z-index: 10;
+        background: #fff;
     }
     #chat-messages {
-        padding-left: 10px;
-        padding-right: 10px;
+        position: absolute;
+        top: 60px;
+        bottom: 60px;
+        left: 0;
+        right: 0;
+        padding: 0 6px;
+        height: auto;
+        max-height: none;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .container {
+        position: relative;
+        padding: 0;
+        height: 100vh;
+        max-height: 100vh;
     }
     .image-viewer .viewer-content {
         max-width: 98vw;
         max-height: 90vh;
+    }
+    .message {
+        font-size: 15px;
+        min-width: 0;
+    }
+    .my-message, .other-message {
+        max-width: 85vw;
+        min-width: 0;
+    }
+    .message-content img, .message-content video {
+        max-width: 70vw;
+        height: auto;
+        border-radius: 12px;
+    }
+    .message-reaction-display {
+        font-size: 16px;
     }
 }

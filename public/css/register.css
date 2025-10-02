@@ -61,43 +61,9 @@ h2 {
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
-.input-group label {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #999;
-    font-size: 15px;
-    pointer-events: none;
-    transition: all 0.3s ease;
-    background: #fff;
-    padding: 0 5px;
-}
-.input-group input:focus + label,
-.input-group input:not(:placeholder-shown) + label {
-    top: 0;
-    font-size: 12px;
-    color: #667eea;
-}
-.password-wrapper {
-    position: relative;
-}
-.toggle-password {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #999;
-    transition: color 0.3s ease;
-    user-select: none;
-}
-.toggle-password:hover {
-    color: #667eea;
-}
-button {
+.button {
     width: 100%;
-    padding: 14px;
+    padding: 12px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
     border: none;
@@ -105,76 +71,17 @@ button {
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    margin-top: 10px;
-    position: relative;
-    overflow: hidden;
+    transition: background 0.3s;
 }
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-}
-button:active {
-    transform: translateY(0);
-}
-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-.loader {
-    display: none;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-}
-@keyframes spin {
-    to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-button.loading .btn-text {
-    opacity: 0;
-}
-button.loading .loader {
-    display: block;
-}
-.register-link {
-    display: block;
-    margin-top: 25px;
-    text-align: center;
-    color: #666;
-    text-decoration: none;
-    font-size: 14px;
-    transition: color 0.3s ease;
-}
-.register-link:hover {
-    color: #667eea;
-}
-.register-link a {
-    color: #667eea;
-    font-weight: 600;
-    text-decoration: none;
-}
-.register-link a:hover {
-    text-decoration: underline;
+.button:hover {
+    background: #764ba2;
 }
 #msg {
-    margin-top: 20px;
-    padding: 12px;
+    margin-bottom: 18px;
+    padding: 10px 14px;
     border-radius: 8px;
     font-size: 14px;
-    text-align: center;
     display: none;
-    animation: fadeIn 0.3s ease;
-}
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
 }
 #msg.success {
     background: #d4edda;
