@@ -41,12 +41,18 @@
             </div>
         </div>
     </div>
+    <script>
+    // Make username available globally for logout and users.js
+    window.me = '<%= typeof me !== "undefined" ? me : "" %>';
+    </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/users.js"></script>
     <script>
     // Override logout to call backend
     function logout() {
-        if (confirm('Are you sure you want to logout?')) {
+        var username = window.me;
+        var msg = `Hi ${username},\nAre you sure you want to logout?`;
+        if (confirm(msg)) {
             fetch('/api/logout', { method: 'POST' })
                 .then(() => window.location.href = '/login');
         }

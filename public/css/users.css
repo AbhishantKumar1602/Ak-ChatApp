@@ -294,41 +294,106 @@ li:last-child {
     to { transform: rotate(360deg); }
 }
 @media (max-width: 600px) {
-    body {
+    html, body {
+        height: 100vh;
+        min-height: 100vh;
+        width: 100vw;
         padding: 0;
+        margin: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        overflow: hidden;
     }
     .container {
         max-width: 100vw;
         width: 100vw;
         max-height: 100vh;
+        height: 100vh;
         border-radius: 0;
         box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        position: relative;
     }
     .header {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
-        z-index: 10;
+        z-index: 20;
         padding: 14px 8px;
+        min-height: 56px;
+        height: 56px;
+        box-sizing: border-box;
     }
     .search-container {
         padding: 10px 8px;
         position: fixed;
-        top: 60px;
+        top: 56px;
         left: 0;
         width: 100vw;
-        z-index: 9;
+        z-index: 15;
         background: #f8f9fa;
+        box-sizing: border-box;
+        min-height: 48px;
+        height: 48px;
+        border-bottom: 1px solid #e1e8ed;
     }
     .user-list-container {
-        padding-top: 120px;
-        height: calc(100vh - 120px);
-        max-height: calc(100vh - 120px);
+        position: absolute;
+        top: 104px;
+        left: 0;
+        width: 100vw;
+        height: calc(100vh - 104px);
+        max-height: calc(100vh - 104px);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        background: #fff;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+        border-bottom: none;
+    }
+    .user-row {
+        padding: 14px 8px;
+        gap: 10px;
+        min-height: 64px;
+        font-size: 16px;
+        touch-action: manipulation;
+        border-radius: 0;
+    }
+    .user-row:last-child {
+        border-bottom: none;
+    }
+    .profile-badge {
+        min-width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+    .user-name {
+        font-size: 15px;
     }
     .last-message {
-        max-width: 60vw;
+        max-width: 55vw;
+        font-size: 13px;
+    }
+    .right-info {
+        min-width: 48px;
+        gap: 4px;
+    }
+    .last-time {
+        font-size: 11px;
+    }
+    .unread-badge {
+        font-size: 11px;
+        min-width: 18px;
+        padding: 2px 6px;
+    }
+    .empty-state {
+        padding: 40px 10px;
+        font-size: 15px;
+    }
+    .spinner {
+        width: 32px;
+        height: 32px;
     }
 }
