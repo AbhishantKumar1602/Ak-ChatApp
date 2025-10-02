@@ -8,6 +8,7 @@ const { Server } = require("socket.io");
 const multer = require('multer');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
+const session = require('express-session');
 
 // Route Imports
 const userRoutes = require('./routes/userRoutes');
@@ -100,6 +101,14 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cors());
 app.use(express.static(path.join(__dirnam, 'public')));
 
+// Session middleware (add after express.json, before routes)
+app.use(session({
+    secret: 'your-secret-key', // Change to a strong secret in production
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // Set to true if using HTTPS
+}));
+
 // Add logging middleware
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -149,24 +158,20 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
 // ===================================
 // SOCKET.IO CONFIGURATION
 // ===================================
-const onlineUsers = {};
+const onlineUsers = {}; // username: Set of socket ids
 
 io.on('connection', (socket) => {
     console.log('🔌 New socket connection:', socket.id);
 
     // Register user
     socket.on('register user', async (username) => {
-        const oldSocketId = onlineUsers[username];
-        if (oldSocketId && oldSocketId !== socket.id) {
-            console.log(`🔄 User ${username} reconnected from different socket`);
+        if (!onlineUsers[username]) {
+            onlineUsers[username] = new Set();
         }
-        
-        onlineUsers[username] = socket.id;
+        onlineUsers[username].add(socket.id);
         socket.username = username;
-        
         console.log(`✅ User registered: ${username} -> ${socket.id}`);
         console.log('📋 Online users:', Object.keys(onlineUsers));
-
         try {
             await User.updateOne(
                 { username }, 
@@ -175,7 +180,6 @@ io.on('connection', (socket) => {
         } catch (error) {
             console.error('❌ Error updating user lastActive:', error);
         }
-
         io.emit('user-status', { username, online: true });
         io.emit('update userlist');
     });
@@ -262,22 +266,29 @@ io.on('connection', (socket) => {
 
     socket.on('message-reaction', async (data) => {
         try {
-            const recipientSocketId = onlineUsers[data.to];
-            const senderSocketId = onlineUsers[data.from];
-            // Emit to recipient
-            if (recipientSocketId) {
-                io.to(recipientSocketId).emit('message-reaction', {
-                    from: data.from,
-                    reaction: data.reaction,
-                    messageId: data.messageId
-                });
-            }
-            // Emit to sender (so both see the reaction update)
-            if (senderSocketId && senderSocketId !== recipientSocketId) {
-                io.to(senderSocketId).emit('message-reaction', {
-                    from: data.from,
-                    reaction: data.reaction,
-                    messageId: data.messageId
+            // WhatsApp-style: one reaction per user per message
+            const chat = await Chat.findById(data.messageId);
+            if (!chat) return;
+            // Remove previous reaction by this user
+            chat.reactions = chat.reactions.filter(r => r.user !== data.from);
+            // Add new reaction
+            chat.reactions.push({ user: data.from, emoji: data.reaction });
+            await chat.save();
+            // Prepare reactions summary for frontend
+            const reactionsSummary = {};
+            chat.reactions.forEach(r => {
+                if (!reactionsSummary[r.emoji]) reactionsSummary[r.emoji] = 0;
+                reactionsSummary[r.emoji]++;
+            });
+            // Broadcast to all users in chat (from/to)
+            const allSockets = new Set();
+            if (onlineUsers[chat.from]) for (const sid of onlineUsers[chat.from]) allSockets.add(sid);
+            if (onlineUsers[chat.to]) for (const sid of onlineUsers[chat.to]) allSockets.add(sid);
+            for (const sid of allSockets) {
+                io.to(sid).emit('message-reaction', {
+                    messageId: chat._id.toString(),
+                    reactions: chat.reactions,
+                    reactionsSummary
                 });
             }
             console.log(`❤️ Reaction: ${data.from} reacted ${data.reaction}`);
@@ -300,22 +311,22 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', async () => {
-        if (socket.username) {
-            delete onlineUsers[socket.username];
-            console.log(`❌ User disconnected: ${socket.username}`);
-            console.log('📋 Online users:', Object.keys(onlineUsers));
-            
-            io.emit('user-status', { username: socket.username, online: false });
-            
-            try {
-                await User.updateOne(
-                    { username: socket.username }, 
-                    { $set: { lastActive: new Date() } }
-                );
-            } catch (error) {
-                console.error('❌ Error updating user lastActive on disconnect:', error);
+        if (socket.username && onlineUsers[socket.username]) {
+            onlineUsers[socket.username].delete(socket.id);
+            if (onlineUsers[socket.username].size === 0) {
+                delete onlineUsers[socket.username];
+                console.log(`❌ User disconnected: ${socket.username}`);
+                console.log('📋 Online users:', Object.keys(onlineUsers));
+                io.emit('user-status', { username: socket.username, online: false });
+                try {
+                    await User.updateOne(
+                        { username: socket.username }, 
+                        { $set: { lastActive: new Date() } }
+                    );
+                } catch (error) {
+                    console.error('❌ Error updating user lastActive on disconnect:', error);
+                }
             }
-            
             io.emit('update userlist');
         }
     });
@@ -340,6 +351,9 @@ app.get('/login', (req, res) => {
     res.render('login');
 });
 
+// Protect /users and /chat pages
+app.use(['/users', '/chat'], authMiddleware);
+
 app.use('/', pageRoutes);
 
 // ===================================
@@ -354,10 +368,12 @@ app.use((req, res, next) => {
 // ===================================
 // API ROUTES (PROTECTED)
 // ===================================
-app.use('/api', authMiddleware);
-app.use('/api', userRoutes);
-app.use('/api', chatRoutes);
-app.use('/api', miscRoutes);
+// Public API routes
+app.use('/api', userRoutes); // includes /api/login, /api/register
+// Protected API routes
+app.use('/api', authMiddleware, chatRoutes);
+app.use('/api/unread-counts', authMiddleware, miscRoutes);
+app.use('/api/last-active', authMiddleware, miscRoutes);
 
 // ===================================
 // HEALTH CHECK ROUTE

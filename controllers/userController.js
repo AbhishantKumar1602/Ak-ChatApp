@@ -29,6 +29,8 @@ exports.login = async (req, res) => {
         user.lastActive = new Date();
         await user.save();
         if (req.io) req.io.emit('update userlist');
+        // Set session user for authentication
+        req.session.user = { username: user.username, email: user.email, _id: user._id };
         res.json({ message: 'Login successful', user: { username: user.username, email: user.email, _id: user._id } });
     } catch (err) {
         res.status(500).json({ message: 'Login failed', error: err.message });
@@ -36,8 +38,9 @@ exports.login = async (req, res) => {
 };
 
 exports.getUserList = async (req, res) => {
-    const me = req.query.me;
-    if (!me) return res.status(400).json([]);
+    // Use session user for authentication
+    if (!req.session || !req.session.user) return res.status(401).json([]);
+    const me = req.session.user.username;
     try {
         const users = await User.find({ username: { $ne: me } }, 'username email');
         const usernames = users.map(u => u.username);
@@ -84,4 +87,11 @@ exports.getUserList = async (req, res) => {
     } catch (err) {
         res.status(500).json({ message: 'Failed to load user list', error: err.message });
     }
+};
+
+exports.logout = (req, res) => {
+    req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.json({ message: 'Logged out' });
+    });
 };

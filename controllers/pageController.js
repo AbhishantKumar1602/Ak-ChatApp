@@ -1,6 +1,12 @@
+const User = require('../models/User');
+const Chat = require('../models/Chat');
+
 exports.renderChatPage = async (req, res) => {
-    const { user: otherUsername, me } = req.query;
-    if (!otherUsername || !me) return res.status(400).send('Missing user info');
+    // Use session user for authentication
+    if (!req.session || !req.session.user) return res.redirect('/login');
+    const me = req.session.user.username;
+    const otherUsername = req.query.user;
+    if (!otherUsername) return res.status(400).send('Missing user info');
     const otherUser = await User.findOne({ username: otherUsername });
     res.render('chat', {
         me,
@@ -11,12 +17,11 @@ exports.renderChatPage = async (req, res) => {
         }
     });
 };
-const User = require('../models/User');
-const Chat = require('../models/Chat');
 
 exports.renderUserList = async (req, res) => {
-    const me = req.query.me;
-    if (!me) return res.redirect('/login');
+    // Use session user for authentication
+    if (!req.session || !req.session.user) return res.redirect('/login');
+    const me = req.session.user.username;
     const users = await User.find({ username: { $ne: me } }, 'username email');
     const usersWithLastMsg = await Promise.all(users.map(async user => {
         const lastMsg = await Chat.findOne({
