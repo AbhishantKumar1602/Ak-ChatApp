@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="/css/chat.css">
 </head>
 <body>
+    <div id="inAppNotification" style="display:none;position:fixed;top:0;left:0;width:100vw;z-index:9999;background:#4fc3f7;color:#fff;text-align:center;padding:1em 0;font-size:1.1em;box-shadow:0 2px 8px rgba(0,0,0,0.08);transition:top 0.3s;">
+        <span id="inAppNotificationMsg"></span>
+    </div>
     <div class="container">
         <div class="header">
             <a href="/users" class="back-button">
@@ -23,7 +26,13 @@
             <div class="header-actions">
                 <button class="header-btn" id="searchBtn" title="Search">🔍</button>
                 <button class="header-btn" id="themeBtn" title="Toggle Theme">🌙</button>
-                <button class="header-btn" title="More">⋮</button>
+                    <div class="dropdown" style="position:relative;display:inline-block;">
+                        <button class="header-btn" id="moreBtn" title="More">⋮</button>
+                        <div id="moreDropdown" class="dropdown-content" style="display:none;position:absolute;right:0;top:2.2em;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:150px;z-index:10;">
+                            <button id="clearChatBtn" style="width:100%;padding:0.7em 1em;border:none;background:none;text-align:left;cursor:pointer;">🧹 Clear Chat</button>
+                            <button id="removeFriendBtn" style="width:100%;padding:0.7em 1em;border:none;background:none;text-align:left;cursor:pointer;color:#e74c3c;">❌ Remove Friend</button>
+                        </div>
+                    </div>
             </div>
         </div>
 
@@ -79,6 +88,50 @@
             window.me = "<%= me %>";
             window.other = "<%= otherUsername %>";
         </script>
-        <script src="/js/chat.js"></script>
+            <script src="/js/chat.js"></script>
+            <script>
+            // Dropdown logic for More button
+            const moreBtn = document.getElementById('moreBtn');
+            const moreDropdown = document.getElementById('moreDropdown');
+            moreBtn.onclick = function(e) {
+                e.stopPropagation();
+                moreDropdown.style.display = (moreDropdown.style.display === 'block') ? 'none' : 'block';
+            };
+            document.addEventListener('click', function(e) {
+                if (!moreDropdown.contains(e.target) && e.target !== moreBtn) {
+                    moreDropdown.style.display = 'none';
+                }
+            });
+            // Clear Chat logic
+            document.getElementById('clearChatBtn').onclick = async function() {
+                if (confirm('Are you sure you want to clear this chat?')) {
+                    const res = await fetch('/api/chat/clear', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user2: window.other })
+                    });
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert('Failed to clear chat');
+                    }
+                }
+            };
+            // Remove Friend logic
+            document.getElementById('removeFriendBtn').onclick = async function() {
+                if (confirm('Are you sure you want to remove this friend?')) {
+                    const res = await fetch('/api/remove-friend', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ friend: window.other })
+                    });
+                    if (res.ok) {
+                        window.location.href = '/users';
+                    } else {
+                        alert('Failed to remove friend');
+                    }
+                }
+            };
+            </script>
 </body>
 </html>

@@ -17,3 +17,26 @@ exports.getChatHistory = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch chat history', error: err.message });
     }
 };
+
+// Clear all chat messages between two users
+exports.clearChat = async (req, res) => {
+    const user1 = req.session?.user?.username;
+    const { user2 } = req.body;
+    if (!user1 || !user2) {
+        console.error('Missing users:', { user1, user2 });
+        return res.status(400).json({ message: 'Missing users', debug: { user1, user2 } });
+    }
+    try {
+        const result = await Chat.deleteMany({
+            $or: [
+                { from: user1, to: user2 },
+                { from: user2, to: user1 }
+            ]
+        });
+        console.log(`Cleared chat between ${user1} and ${user2}:`, result);
+        res.json({ message: 'Chat cleared', deletedCount: result.deletedCount });
+    } catch (err) {
+        console.error('Failed to clear chat:', err);
+        res.status(500).json({ message: 'Failed to clear chat', error: err.message });
+    }
+};

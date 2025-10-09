@@ -1,3 +1,24 @@
+console.log('✅ users.js loaded');
+// --- Browser Push Notification Logic ---
+function requestNotificationPermission() {
+    if ('Notification' in window) {
+        console.log('Notification permission:', Notification.permission);
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then((perm) => {
+                console.log('Notification permission result:', perm);
+            });
+        }
+    }
+}
+function showBrowserNotification(title, body) {
+    if ('Notification' in window) {
+        console.log('Trying to show notification. Permission:', Notification.permission, 'Title:', title, 'Body:', body);
+        if (Notification.permission === 'granted') {
+            new Notification(title, { body });
+        }
+    }
+}
+requestNotificationPermission();
 window.socket = window.socket || io();
 if (window.me) {
     window.socket.emit('register user', window.me);
@@ -8,6 +29,9 @@ const userListElement = document.getElementById('user-list');
 const searchInput = document.getElementById('searchInput');
 const emptyState = document.getElementById('emptyState');
 const loadingState = document.querySelector('.loading');
+// --- FRIEND SYSTEM LOGIC ---
+const notifBadge = document.getElementById('notifBadge');
+const friendRequestsModal = document.getElementById('friendRequestsModal');
 function formatTime(timestamp) {
     if (!timestamp) return '';
     const date = new Date(timestamp);
@@ -85,24 +109,128 @@ function filterUsers(searchTerm) {
     );
     renderUserList(filtered);
 }
-async function updateUserList() {
-    try {
-        const res = await fetch(`/api/userlist`);
-        if (res.ok) {
-            allUsers = await res.json();
-            const searchTerm = searchInput.value;
-            if (searchTerm) {
-                filterUsers(searchTerm);
+async function fetchContacts() {
+    const res = await fetch('/api/contacts');
+    if (res.ok) return res.json();
+    return [];
+}
+async function fetchAllUsers() {
+    const res = await fetch('/api/userlist');
+    if (res.ok) return res.json();
+    return [];
+}
+async function fetchFriendRequests() {
+    const res = await fetch('/api/friend-requests');
+    if (res.ok) return res.json();
+    return [];
+}
+async function renderAllUsersModal() {
+    allUsersList.innerHTML = '<li>Loading...</li>';
+    const [allUsers, contacts, requests] = await Promise.all([
+        fetchAllUsers(), fetchContacts(), fetchFriendRequests()
+    ]);
+    const pendingFrom = requests.map(r => r.from);
+    const me = window.me;
+    const filtered = allUsers.filter(u =>
+        u.username !== me &&
+        !contacts.includes(u.username) &&
+        !pendingFrom.includes(u.username)
+    );
+    if (filtered.length === 0) {
+        allUsersList.innerHTML = '<li>No users to add</li>';
+        return;
+    }
+    allUsersList.innerHTML = '';
+    filtered.forEach(u => {
+        const li = document.createElement('li');
+        li.textContent = u.username + ' ';
+        const btn = document.createElement('button');
+        btn.textContent = 'Send Request';
+        btn.onclick = async () => {
+            btn.disabled = true;
+            const resp = await fetch('/api/friend-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: u.username })
+            });
+            if (resp.ok) {
+                btn.textContent = 'Requested';
             } else {
-                renderUserList(allUsers);
+                btn.textContent = 'Error';
             }
-        } else {
-            console.error('Failed to fetch user list:', res.status);
+        };
+        li.appendChild(btn);
+        allUsersList.appendChild(li);
+    });
+}
+document.getElementById('addChatBtn').addEventListener('click', renderAllUsersModal);
+// Render friend requests in modal and update notification badge
+async function renderFriendRequests() {
+    const requests = await fetchFriendRequests();
+    // If there are new friend requests, show a browser notification
+    if (Array.isArray(requests) && requests.length > 0) {
+        // Only notify if badge is not already showing (avoid spam)
+        if (notifBadge && notifBadge.textContent !== requests.length.toString()) {
+            showBrowserNotification('New Friend Request', 'You have a new friend request!');
         }
-    } catch (error) {
-        console.error('Error updating user list:', error);
-        loadingState.classList.remove('show');
-        emptyState.classList.add('show');
+    }
+    // Update badge
+    if (requests.length > 0) {
+        notifBadge.textContent = requests.length;
+        notifBadge.style.display = '';
+    } else {
+        notifBadge.style.display = 'none';
+    }
+    // Only render in modal
+    const friendRequestsList = document.getElementById('friendRequestsList');
+    friendRequestsList.innerHTML = '';
+    if (requests.length === 0) {
+        friendRequestsList.innerHTML = '<li style="text-align:center;color:#888;">No friend requests</li>';
+        return;
+    }
+    requests.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r.from + ' ';
+        const acceptBtn = document.createElement('button');
+        acceptBtn.textContent = 'Accept';
+        acceptBtn.onclick = async () => {
+            await fetch('/api/friend-request/respond', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: r.from, accept: true })
+            });
+            renderFriendRequests();
+            updateUserList();
+        };
+        const denyBtn = document.createElement('button');
+        denyBtn.textContent = 'Deny';
+        denyBtn.onclick = async () => {
+            await fetch('/api/friend-request/respond', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: r.from, accept: false })
+            });
+            renderFriendRequests();
+        };
+        li.appendChild(acceptBtn);
+        li.appendChild(denyBtn);
+        friendRequestsList.appendChild(li);
+    });
+}
+async function updateUserList() {
+    const contacts = await fetchContacts();
+    const res = await fetch(`/api/userlist`);
+    let users = [];
+    if (res.ok) {
+        users = await res.json();
+    }
+    const filtered = users.filter(u => contacts.includes(u.username));
+    allUsers = filtered;
+    const searchTerm = searchInput.value;
+    if (searchTerm) {
+        filterUsers(searchTerm);
+    } else {
+        renderUserList(allUsers);
     }
 }
 searchInput.addEventListener('input', (e) => {
@@ -110,4 +238,6 @@ searchInput.addEventListener('input', (e) => {
 });
 window.socket.on('update userlist', updateUserList);
 updateUserList();
+renderFriendRequests();
 setInterval(updateUserList, UPDATE_INTERVAL);
+setInterval(renderFriendRequests, 1000); // Update every 1 second

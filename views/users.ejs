@@ -14,6 +14,11 @@
                 <h2>Ak Chats</h2>
             </div>
             <div class="header-actions">
+                <button class="header-btn" id="addChatBtn" title="Add Chat">➕</button>
+                <button class="header-btn" id="friendReqNotifBtn" title="Friend Requests">
+                    <span class="notif-bell">🔔</span>
+                    <span id="notifBadge" class="badge" style="display:none;"></span>
+                </button>
                 <button class="header-btn" title="Logout" onclick="logout()">🚪</button>
             </div>
         </div>
@@ -28,6 +33,16 @@
                 >
             </div>
         </div>
+
+        <!-- Friend Requests Modal -->
+        <div id="friendRequestsModal" class="modal" style="display:none;">
+            <div class="modal-content modal-card">
+                <span class="close" id="closeFriendRequestsModal">&times;</span>
+                <h3 style="margin-bottom:1em;">Friend Requests</h3>
+                <ul id="friendRequestsList"></ul>
+            </div>
+        </div>
+
         <div class="user-list-container">
             <div class="loading show">
                 <div class="spinner"></div>
@@ -45,8 +60,61 @@
     // Make username available globally for logout and users.js
     window.me = '<%= typeof me !== "undefined" ? me : "" %>';
     </script>
+    <!-- Modal for All Users -->
+    <div id="allUsersModal" class="modal" style="display:none;">
+        <div class="modal-content modal-card">
+            <span class="close" id="closeAllUsersModal">&times;</span>
+            <h3 style="margin-bottom:1em;">Add New Chat</h3>
+            <ul id="allUsersList" class="user-modal-list"></ul>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/users.js"></script>
+    <style>
+    .modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: #fff; padding: 2em; border-radius: 12px; min-width: 320px; max-width: 95vw; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+    .modal-card { max-height: 80vh; overflow-y: auto; }
+    .close { float: right; font-size: 1.5em; cursor: pointer; color: #888; transition: color 0.2s; }
+    .close:hover { color: #e74c3c; }
+    .user-modal-list { list-style: none; padding: 0; margin: 0; }
+    .user-modal-list li { display: flex; align-items: center; justify-content: space-between; padding: 0.7em 1em; border-bottom: 1px solid #eee; border-radius: 6px; margin-bottom: 0.2em; background: #fafbfc; transition: background 0.2s; }
+    .user-modal-list li:hover { background: #f0f4f8; }
+    .user-modal-list button { background: #4fc3f7; color: #fff; border: none; border-radius: 4px; padding: 0.3em 1em; cursor: pointer; font-weight: 500; transition: background 0.2s; }
+    .user-modal-list button:disabled { background: #b2ebf2; color: #888; cursor: not-allowed; }
+    .user-modal-list .requested { background: #b2ebf2; color: #888; }
+    .notif-bell { font-size: 1.3em; vertical-align: middle; }
+    .badge { background: #e74c3c; color: #fff; border-radius: 50%; padding: 0.2em 0.6em; font-size: 0.9em; margin-left: 0.2em; position: absolute; top: 0.2em; right: 0.2em; }
+    #friendRequestsList { list-style: none; padding: 0; margin: 0; }
+    #friendRequestsList li { display: flex; align-items: center; justify-content: space-between; padding: 0.7em 1em; border-bottom: 1px solid #eee; border-radius: 6px; margin-bottom: 0.2em; background: #fff8e1; }
+    #friendRequestsList button { margin-left: 0.5em; padding: 0.2em 0.8em; border-radius: 4px; border: none; font-weight: 500; cursor: pointer; }
+    #friendRequestsList button:first-child { background: #43a047; color: #fff; }
+    #friendRequestsList button:last-child { background: #e74c3c; color: #fff; }
+    </style>
+    <script>
+    // Modal logic for Add Chat
+    document.getElementById('addChatBtn').onclick = function() {
+        document.getElementById('allUsersModal').style.display = 'flex';
+    };
+    document.getElementById('closeAllUsersModal').onclick = function() {
+        document.getElementById('allUsersModal').style.display = 'none';
+    };
+    // Modal logic for Friend Requests
+    document.getElementById('friendReqNotifBtn').onclick = function() {
+        document.getElementById('friendRequestsModal').style.display = 'flex';
+    };
+    document.getElementById('closeFriendRequestsModal').onclick = function() {
+        document.getElementById('friendRequestsModal').style.display = 'none';
+    };
+    window.onclick = function(event) {
+        if (event.target === document.getElementById('allUsersModal')) {
+            document.getElementById('allUsersModal').style.display = 'none';
+        }
+        if (event.target === document.getElementById('friendRequestsModal')) {
+            document.getElementById('friendRequestsModal').style.display = 'none';
+        }
+    };
+    </script>
     <script>
     // Override logout to call backend
     function logout() {

@@ -1,3 +1,36 @@
+// --- In-app notification banner ---
+function showInAppNotification(msg) {
+	const banner = document.getElementById('inAppNotification');
+	const msgSpan = document.getElementById('inAppNotificationMsg');
+	if (banner && msgSpan) {
+		msgSpan.textContent = msg;
+		banner.style.display = 'block';
+		setTimeout(() => {
+			banner.style.display = 'none';
+		}, 3000);
+	}
+}
+console.log('✅ chat.js loaded');
+// --- Browser Push Notification Logic ---
+function requestNotificationPermission() {
+	if ('Notification' in window) {
+		console.log('Notification permission:', Notification.permission);
+		if (Notification.permission === 'default') {
+			Notification.requestPermission().then((perm) => {
+				console.log('Notification permission result:', perm);
+			});
+		}
+	}
+}
+function showBrowserNotification(title, body) {
+	if ('Notification' in window) {
+		console.log('Trying to show notification. Permission:', Notification.permission, 'Title:', title, 'Body:', body);
+		if (Notification.permission === 'granted') {
+			new Notification(title, { body });
+		}
+	}
+}
+requestNotificationPermission();
 
 // Full chat logic from chat.ejs
 // This script expects variables 'me' and 'other' to be available globally
@@ -221,18 +254,41 @@ function formatTime(timestamp) {
 }
 function reactToMessage(btn, reaction) {
 	const messageDiv = btn.closest('.message');
-	let reactionDisplay = messageDiv.querySelector('.message-reaction-display');
-	if (!reactionDisplay) {
-		reactionDisplay = document.createElement('div');
-		reactionDisplay.className = 'message-reaction-display';
-		messageDiv.querySelector('.message-content').appendChild(reactionDisplay);
+	const messageId = messageDiv.dataset.messageId;
+	// Find if I already reacted with this emoji
+	let alreadyReacted = false;
+	let myReaction = null;
+	const reactionDisplay = messageDiv.querySelector('.message-reaction-display');
+	if (reactionDisplay && reactionDisplay.innerHTML) {
+		// Try to find my reaction in the message's data (if available)
+		// But more robust: check the message object if available
 	}
-	reactionDisplay.textContent = reaction;
+	// Try to get reactions from the messageDiv if available (set by appendMessage)
+	let reactions = [];
+	if (messageDiv.reactions) {
+		reactions = messageDiv.reactions;
+	} else if (window.lastMessageIds && Array.isArray(window.lastMessageIds)) {
+		// fallback: not robust, but for now
+	}
+	// Try to get from DOM (not ideal, but for now)
+	// Instead, let's use a data attribute if possible
+	if (messageDiv.dataset.reactions) {
+		try {
+			reactions = JSON.parse(messageDiv.dataset.reactions);
+		} catch {}
+	}
+	// Fallback: check for my reaction in the reactions array
+	if (Array.isArray(reactions)) {
+		myReaction = reactions.find(r => r.user === me && r.emoji === reaction);
+		alreadyReacted = !!myReaction;
+	}
+	// Send toggle info to backend
 	socket.emit('message-reaction', {
 		from: me,
 		to: other,
 		reaction: reaction,
-		messageId: messageDiv.dataset.messageId
+		messageId: messageId,
+		remove: alreadyReacted // if true, backend should remove this reaction
 	});
 }
 function appendMessage(sender, msg, time, status = 'sent', fileUrl = null, fileType = null, messageId = null, reactions = []) {
@@ -240,6 +296,8 @@ function appendMessage(sender, msg, time, status = 'sent', fileUrl = null, fileT
 	const messageDiv = document.createElement('div');
 	messageDiv.className = 'message ' + (isMe ? 'my-message' : 'other-message');
 	messageDiv.dataset.messageId = messageId || Date.now();
+	// Store reactions as JSON string for easy access
+	messageDiv.dataset.reactions = JSON.stringify(reactions || []);
 	const contentDiv = document.createElement('div');
 	contentDiv.className = 'message-content';
 	if (fileUrl && fileType) {
@@ -401,12 +459,16 @@ socket.on('private message', (data) => {
 		);
 		if (data.from === other) {
 			playNotificationSound();
+			showBrowserNotification(`${data.from} sent a message`, data.message);
+			showInAppNotification(`${data.from}: ${data.message}`);
 		}
 	}
 });
 socket.on('message-reaction', (data) => {
 	const messageDiv = document.querySelector(`[data-message-id="${data.messageId}"]`);
 	if (messageDiv) {
+		// Update reactions data for this message
+		messageDiv.dataset.reactions = JSON.stringify(data.reactions || []);
 		let reactionDisplay = messageDiv.querySelector('.message-reaction-display');
 		if (!reactionDisplay) {
 			reactionDisplay = document.createElement('div');

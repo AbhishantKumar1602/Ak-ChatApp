@@ -1,6 +1,4 @@
-// Authentication middleware: checks for session user
 module.exports = function (req, res, next) {
-    // If user is authenticated (session exists), continue
     if (req.session && req.session.user) {
         return next();
     }

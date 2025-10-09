@@ -266,13 +266,18 @@ io.on('connection', (socket) => {
 
     socket.on('message-reaction', async (data) => {
         try {
-            // WhatsApp-style: one reaction per user per message
+            // WhatsApp-style: one reaction per user per message, with toggle (unreact)
             const chat = await Chat.findById(data.messageId);
             if (!chat) return;
-            // Remove previous reaction by this user
-            chat.reactions = chat.reactions.filter(r => r.user !== data.from);
-            // Add new reaction
-            chat.reactions.push({ user: data.from, emoji: data.reaction });
+            if (data.remove) {
+                // Remove this user's reaction for this emoji only
+                chat.reactions = chat.reactions.filter(r => !(r.user === data.from && r.emoji === data.reaction));
+            } else {
+                // Remove any previous reaction by this user (any emoji)
+                chat.reactions = chat.reactions.filter(r => r.user !== data.from);
+                // Add new reaction
+                chat.reactions.push({ user: data.from, emoji: data.reaction });
+            }
             await chat.save();
             // Prepare reactions summary for frontend
             const reactionsSummary = {};
@@ -291,7 +296,11 @@ io.on('connection', (socket) => {
                     reactionsSummary
                 });
             }
-            console.log(`❤️ Reaction: ${data.from} reacted ${data.reaction}`);
+            if (data.remove) {
+                console.log(`💨 Reaction removed: ${data.from} unreacted ${data.reaction}`);
+            } else {
+                console.log(`❤️ Reaction: ${data.from} reacted ${data.reaction}`);
+            }
         } catch (error) {
             console.error('❌ Reaction error:', error);
         }

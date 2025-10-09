@@ -726,7 +726,7 @@ li:hover .unread-badge {
     .unread-badge {
         border: 2px solid #fff;
     }
-}
+} 
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
